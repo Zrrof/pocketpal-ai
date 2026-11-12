@@ -52,7 +52,7 @@ describe('Hexagon device selection', () => {
     'keeps CPU available when discovery returns %j',
     async devices => {
       discover.mockResolvedValue(devices);
-      expect((await getDeviceOptions()).map(o => o.id)).toEqual(['cpu']);
+      expect((await getDeviceOptions()).map(o => o.id)).toEqual(['auto', 'cpu']);
       expect(
         await resolveDeviceSelection({devices: ['HTP*'], n_gpu_layers: 99}),
       ).toEqual({devices: ['CPU'], n_gpu_layers: 0});
@@ -62,7 +62,7 @@ describe('Hexagon device selection', () => {
   it('falls back to CPU after discovery rejects', async () => {
     const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
     discover.mockRejectedValue(new Error('Discovery failed'));
-    expect((await getDeviceOptions()).map(o => o.id)).toEqual(['cpu']);
+    expect((await getDeviceOptions()).map(o => o.id)).toEqual(['auto', 'cpu']);
     expect(
       await resolveDeviceSelection({devices: ['HTP*'], n_gpu_layers: 99}),
     ).toEqual({devices: ['CPU'], n_gpu_layers: 0});
@@ -72,15 +72,32 @@ describe('Hexagon device selection', () => {
   it.each([{devices: undefined}, {devices: []}, {devices: ['CPU']}])(
     'resolves Android CPU selection $devices without inherited GPU offloading',
     async ({devices}) => {
-      const selection = {devices, n_gpu_layers: 99};
+      const selection = {devices, n_gpu_layers: 0};
       expect(await resolveDeviceSelection(selection)).toEqual({
         devices: ['CPU'],
         n_gpu_layers: 0,
       });
-      expect(selection).toEqual({devices, n_gpu_layers: 99});
+      expect(selection).toEqual({devices, n_gpu_layers: 0});
       expect(discover).not.toHaveBeenCalled();
     },
   );
+
+  it('prefers a registered Vulkan GPU for Android auto selection', async () => {
+    discover.mockResolvedValue([
+      {...device('Adreno 840'), type: 'gpu', backend: 'OpenCL'},
+      {...device('Xclipse 960'), type: 'gpu', backend: 'Vulkan'},
+    ]);
+    expect(
+      await resolveDeviceSelection({devices: undefined, n_gpu_layers: 99}),
+    ).toEqual({devices: ['Xclipse 960'], n_gpu_layers: 99});
+  });
+
+  it('falls back to CPU when auto discovery finds no usable accelerator', async () => {
+    discover.mockResolvedValue([]);
+    expect(
+      await resolveDeviceSelection({devices: undefined, n_gpu_layers: 99}),
+    ).toEqual({devices: ['CPU'], n_gpu_layers: 0});
+  });
 
   it('preserves an OpenCL selection without discovery', async () => {
     const selection = {devices: ['Adreno (TM) 840'], n_gpu_layers: 23};

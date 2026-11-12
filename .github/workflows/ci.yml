@@ -192,6 +192,9 @@ jobs:
         # reads the app's "enriched-markdown" config only through INIT_CWD.
         run: INIT_CWD="$GITHUB_WORKSPACE" node node_modules/react-native-enriched-markdown/postinstall.mjs
 
+      - name: Install Vulkan shader build dependencies
+        run: sudo apt-get update && sudo apt-get install -y glslc spirv-headers libvulkan-dev
+
       - name: Derive the rnllama variant allowlist from the payload manifest
         run: |
           set -euo pipefail

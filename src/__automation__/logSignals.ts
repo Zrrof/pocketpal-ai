@@ -20,7 +20,7 @@
  * Hexagon literals verified at HEAD per WHAT D2).
  */
 export const BENCH_LOG_RE =
-  /(ggml_opencl|using device GPUOpenCL|ggml_backend_|Adreno large buffer|offloaded \d+\/\d+ layers|load_tensors:|llama_model_load|ggml_cl|adreno_gen|ggml-hex|ggml_hexagon|Hexagon backend|new session: HTP|Hexagon Arch version|KV buffer size|compute buffer size)/;
+  /(ggml_opencl|ggml_vulkan|Vulkan\d*|using device GPUOpenCL|ggml_backend_|Adreno large buffer|offloaded \d+\/\d+ layers|load_tensors:|llama_model_load|ggml_cl|adreno_gen|ggml-hex|ggml_hexagon|Hexagon backend|new session: HTP|Hexagon Arch version|KV buffer size|compute buffer size)/;
 
 export interface LogSignals {
   opencl_init: boolean;
@@ -35,6 +35,8 @@ export interface LogSignals {
   /** First HTP device name observed (e.g. "HTP0"). Mirrors
    * `opencl_device_name`'s first-match-wins semantic. */
   hexagon_device_name: string | null;
+  /** Vulkan registry/init log was seen; actual usage requires Vulkan weight buffers. */
+  vulkan_init: boolean;
   offloaded_layers: number | null;
   total_layers: number | null;
   /** Memory buffers reported by llama.cpp at load + context-init time.
@@ -77,6 +79,8 @@ export type EffectiveBackend =
   | 'cpu+opencl-partial'
   | 'hexagon'
   | 'cpu+hexagon-partial'
+  | 'vulkan'
+  | 'cpu+vulkan-partial'
   | 'metal'
   | 'cpu+metal-partial'
   | 'unknown';
@@ -95,6 +99,7 @@ export function emptyLogSignals(): LogSignals {
     large_buffer_unsupported: false,
     hexagon_init: false,
     hexagon_device_name: null,
+    vulkan_init: false,
     offloaded_layers: null,
     total_layers: null,
     memory_buffers: {
@@ -217,6 +222,9 @@ export function deriveLogSignals(lines: string[]): LogSignals {
     if (hexagonInitRe.test(line)) {
       signals.hexagon_init = true;
     }
+    if (/ggml_vulkan.*(device|backend|registry|found)/i.test(line)) {
+      signals.vulkan_init = true;
+    }
 
     // First-match-wins on the session-start line. Multi-device fusion
     // (e.g. ndev=2 → HTP0 + HTP1 sessions) keeps only the first one for
@@ -298,6 +306,7 @@ export function deriveEffectiveBackend(signals: LogSignals): EffectiveBackend {
   const hasHTP = wKeys.some(k => k.startsWith('HTP'));
   const hasOpenCL = wKeys.some(k => k === 'OpenCL');
   const hasMetal = wKeys.some(k => k.startsWith('MTL'));
+  const hasVulkan = wKeys.some(k => /^Vulkan/i.test(k));
   const hasOnlyCPU =
     wKeys.length > 0 && wKeys.every(k => k === 'CPU' || k === 'CPU_REPACK');
 
@@ -337,6 +346,17 @@ export function deriveEffectiveBackend(signals: LogSignals): EffectiveBackend {
     return 'metal';
   }
 
+  if (hasVulkan) {
+    if (
+      signals.offloaded_layers !== null &&
+      signals.total_layers !== null &&
+      signals.offloaded_layers < signals.total_layers
+    ) {
+      return 'cpu+vulkan-partial';
+    }
+    return 'vulkan';
+  }
+
   if (hasOnlyCPU) {
     return 'cpu';
   }
@@ -344,6 +364,9 @@ export function deriveEffectiveBackend(signals: LogSignals): EffectiveBackend {
   // Fallback to log-init heuristics for cells that failed before
   // `load_tensors:` lines fired (cells where weights_mib stays empty).
   if (signals.hexagon_init) {
+    return 'unknown';
+  }
+  if (signals.vulkan_init) {
     return 'unknown';
   }
   if (!signals.opencl_init) {
@@ -401,7 +424,9 @@ export function requestSatisfiedBy(
         actual === 'opencl' ||
         actual === 'cpu+opencl-partial' ||
         actual === 'metal' ||
-        actual === 'cpu+metal-partial'
+        actual === 'cpu+metal-partial' ||
+        actual === 'vulkan' ||
+        actual === 'cpu+vulkan-partial'
       );
     case 'hexagon':
       return actual === 'hexagon' || actual === 'cpu+hexagon-partial';

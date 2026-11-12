@@ -50,12 +50,26 @@ export async function resolveDeviceSelection(selection: {
   n_gpu_layers?: number;
 }): Promise<{devices?: string[]; n_gpu_layers?: number}> {
   const snapshot = {...selection, devices: selection.devices?.slice()};
-  // Android has no Auto option: absent/empty devices are displayed as CPU.
-  // Resolve persisted defaults and old CPU selections that retained GPU layers.
+  // Android Auto resolves to a backend that this native library actually
+  // registered. Prefer Vulkan (including Mali/Xclipse), then OpenCL, then HTP.
   if (
     Platform.OS === 'android' &&
-    (!snapshot.devices?.length ||
-      (snapshot.devices.length === 1 && snapshot.devices[0] === 'CPU'))
+    (!snapshot.devices?.length || snapshot.devices[0] === 'AUTO') &&
+    (snapshot.n_gpu_layers ?? 0) > 0
+  ) {
+    const available = await getAvailableDevices();
+    const selected =
+      available.find(d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? '')) ??
+      available.find(d => d.type === 'gpu') ??
+      selectHexagonDevice(available);
+    return selected?.deviceName
+      ? {...snapshot, devices: [selected.deviceName]}
+      : {devices: ['CPU'], n_gpu_layers: 0};
+  }
+  if (
+    Platform.OS === 'android' &&
+    snapshot.devices?.length === 1 &&
+    snapshot.devices[0] === 'CPU'
   ) {
     return {devices: ['CPU'], n_gpu_layers: 0};
   }
@@ -130,7 +144,21 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
   const hexagonDevice = selectHexagonDevice(devices);
   const gpuDev = devices.find(d => d.type === 'gpu');
 
-  // Option 1: CPU (always available, recommended for reliability)
+  // Auto uses runtime backend discovery and safely resolves to CPU if none is
+  // registered. Vulkan is preferred when both Vulkan and OpenCL are present.
+  options.push({
+    id: 'auto',
+    label: 'Auto',
+    description: 'Automatically use Vulkan or another available accelerator',
+    devices: undefined,
+    n_gpu_layers: 99,
+    default_flash_attn_type: 'off',
+    valid_flash_attn_types: ['auto', 'on', 'off'],
+    tag: 'Recommended',
+    platform: 'android',
+  });
+
+  // Option 1: CPU (always available)
   // CPU supports all flash attention types
   options.push({
     id: 'cpu',
@@ -140,21 +168,21 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
     n_gpu_layers: 0,
     default_flash_attn_type: 'off',
     valid_flash_attn_types: ['auto', 'on', 'off'], // CPU supports all
-    tag: 'Recommended', // CPU is the recommended/default option for reliability
+    tag: 'Stable',
     platform: 'android',
   });
 
   // Option 2: GPU/OpenCL (if available)
   if (gpuDev) {
-    // According to FLASH_ATTN.md Matrix 1: OpenCL only supports 'off' flash attention
+    const isOpenCL = /opencl/i.test(gpuDev.backend ?? '');
     options.push({
       id: 'gpu',
-      label: `GPU (OpenCL)`,
-      description: 'OpenCL GPU acceleration (Only for Q4_0/Q6_K models)',
+      label: `GPU (${gpuDev.backend})`,
+      description: `${gpuDev.backend} GPU acceleration`,
       devices: [gpuDev.deviceName!],
       n_gpu_layers: 99,
-      default_flash_attn_type: 'off', // Required for OpenCL
-      valid_flash_attn_types: ['off'], // OpenCL only supports 'off'
+      default_flash_attn_type: isOpenCL ? 'off' : 'auto',
+      valid_flash_attn_types: isOpenCL ? ['off'] : ['auto', 'on', 'off'],
       tag: 'Fastest',
       platform: 'android',
       deviceInfo: gpuDev,
@@ -245,10 +273,10 @@ export function validateModelQuantizationForDevice(
 
   // Android: Check OpenCL compatibility
   if (Platform.OS === 'android') {
-    // If using GPU (OpenCL) or Auto (which may use OpenCL)
+    // OpenCL has a restricted quantization set. Vulkan does not share it.
     const mayUseOpenCL =
-      deviceOption.id === 'gpu' ||
-      (deviceOption.id === 'auto' && deviceOption.n_gpu_layers > 0);
+      deviceOption.id === 'gpu' &&
+      /opencl/i.test(deviceOption.deviceInfo?.backend ?? '');
 
     if (mayUseOpenCL) {
       // OpenCL ONLY supports Q4_0 and Q6_K
@@ -292,10 +320,10 @@ export function getDefaultDeviceConfig(): {
       default_flash_attn_type: 'auto',
     };
   } else {
-    // Android: Default to CPU for reliability
+    // Android: automatically use a registered Vulkan/OpenCL/HTP device.
     return {
-      devices: ['CPU'],
-      n_gpu_layers: 0,
+      devices: undefined,
+      n_gpu_layers: 99,
       default_flash_attn_type: 'off',
     };
   }
@@ -328,7 +356,6 @@ export async function getRecommendedDeviceId(): Promise<
     return 'auto';
   }
 
-  // Android: Always recommend CPU for reliability
-  // Users can manually choose GPU or Hexagon if they want to experiment
-  return 'cpu';
+  // Android Auto resolves against registered devices before model loading.
+  return 'auto';
 }

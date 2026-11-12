@@ -1082,3 +1082,104 @@ index 6724826..9dc1388 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_q3_k_q8_1_dp4a.cl.h"
+diff --git a/node_modules/llama.rn/android/src/main/CMakeLists.txt b/node_modules/llama.rn/android/src/main/CMakeLists.txt
+index f3178fd..65e42ed 100644
+--- a/node_modules/llama.rn/android/src/main/CMakeLists.txt
++++ b/node_modules/llama.rn/android/src/main/CMakeLists.txt
+@@ -158,6 +158,7 @@ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
+     build_rnllama_jni("rnllama_jni_v8_2_i8mm" "rnllama_v8_2_i8mm" "arm" "-march=armv8.2-a+i8mm")
+     build_rnllama_jni("rnllama_jni_v8_2_dotprod_i8mm" "rnllama_v8_2_dotprod_i8mm" "arm" "-march=armv8.2-a+dotprod+i8mm")
+     build_rnllama_jni("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl" "rnllama_v8_2_dotprod_i8mm_hexagon_opencl" "arm" "-march=armv8.2-a+dotprod+i8mm")
++    build_rnllama_jni("rnllama_jni_vulkan" "rnllama_vulkan" "generic" "")
+ 
+     # https://github.com/ggerganov/llama.cpp/blob/master/docs/android.md#cross-compile-using-android-ndk
+     # llama.cpp will deal with the cpu features
+diff --git a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
+index da47b6c..7a6244d 100644
+--- a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
++++ b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
+@@ -198,8 +198,18 @@ public class RNLlama {
+       boolean jniLoaded = false;
+       String loadedLib = "";
+       if (isArm64V8a()) {
++        // Vulkan capability is independent of the Qualcomm/OpenCL heuristics.
++        // Let ggml enumerate the actual Vulkan device after this library loads.
++        if (context.getPackageManager().hasSystemFeature(
++            android.content.pm.PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)) {
++          if (tryLoadLibrary("rnllama_jni_vulkan")) {
++            jniLoaded = true;
++            loadedLib = "rnllama_jni_vulkan";
++          }
++        }
++
+         if (hasDotProd && hasI8mm && hasHexagon && hasAdreno) {
+-          if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl")) {
++          if (!jniLoaded && tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl")) {
+             jniLoaded = true;
+             loadedLib = "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl";
+           }
+diff --git a/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt b/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
+index 0e8ace5..9b117a3 100644
+--- a/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
++++ b/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
+@@ -41,6 +41,11 @@ function(build_rnllama_library target_name arch cpu_flags)
+         set(ENABLE_HEXAGON ON)
+     endif ()
+ 
++    set(ENABLE_VULKAN OFF)
++    if (${target_name} MATCHES ".*_vulkan$")
++        set(ENABLE_VULKAN ON)
++    endif ()
++
+     if (NOT ${arch} STREQUAL "generic")
+         set(SOURCE_FILES_ARCH
+             ${RNLLAMA_GGML_CPU_ARCH_DIR}/${arch}/quants.c
+@@ -211,6 +216,40 @@ function(build_rnllama_library target_name arch cpu_flags)
+         )
+     endif ()
+ 
++    # Vulkan is a separate generic CPU variant so it can run on Xclipse/Mali
++    # devices regardless of Adreno detection or CPU feature flags.
++    if (ENABLE_VULKAN)
++        if (NOT TARGET ggml-base)
++            add_library(ggml-base INTERFACE)
++            add_library(ggml INTERFACE)
++            function(ggml_add_backend_library backend)
++                add_library(${backend} STATIC ${ARGN})
++                target_link_libraries(${backend} PRIVATE ggml-base)
++                target_include_directories(${backend} PRIVATE ${RNLLAMA_LLAMA_CPP_DIR}/ggml/src)
++            endfunction()
++        endif()
++        set(GGML_BACKEND_DL OFF)
++        set(GGML_VULKAN_CHECK_RESULTS OFF)
++        set(GGML_VULKAN_DEBUG OFF)
++        set(GGML_VULKAN_MEMORY_DEBUG OFF)
++        set(GGML_VULKAN_SHADER_DEBUG_INFO OFF)
++        set(GGML_VULKAN_VALIDATE OFF)
++        set(GGML_VULKAN_RUN_TESTS OFF)
++        set(BUILD_SHARED_LIBS OFF)
++        # glslc and SPIRV-Headers are host build tools/dependencies during
++        # Android cross-compilation; Vulkan itself still links from the NDK.
++        set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
++        add_subdirectory(${RNLLAMA_LLAMA_CPP_DIR}/ggml/src/ggml-vulkan
++            ${CMAKE_CURRENT_BINARY_DIR}/ggml-vulkan)
++        find_library(VULKAN_LIB vulkan)
++        if (NOT VULKAN_LIB)
++            message(FATAL_ERROR "Android Vulkan loader library was not found")
++        endif()
++        target_link_libraries(${target_name} PRIVATE ggml-vulkan ${VULKAN_LIB})
++        target_compile_options(${target_name} PRIVATE -DGGML_USE_VULKAN)
++        target_compile_options(ggml-vulkan PRIVATE -DGGML_USE_VULKAN)
++    endif ()
++
+     # Optimize for size and performance
+     target_compile_options(${target_name} PRIVATE -O3 -DNDEBUG)
+     target_compile_options(${target_name} PRIVATE -ffunction-sections -fdata-sections)
+@@ -228,6 +267,7 @@ build_rnllama_library("rnllama" "generic" "")
+ 
+ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
+     # ARM64 targets
++    build_rnllama_library("rnllama_vulkan" "generic" "")
+     build_rnllama_library("rnllama_v8" "arm" "-march=armv8-a")
+     build_rnllama_library("rnllama_v8_2" "arm" "-march=armv8.2-a")
+     build_rnllama_library("rnllama_v8_2_dotprod" "arm" "-march=armv8.2-a+dotprod")

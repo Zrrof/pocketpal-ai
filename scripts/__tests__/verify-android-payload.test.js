@@ -96,6 +96,7 @@ const REQUIRED_HEXAGON_SYMBOLS = [
   'ggml_backend_hexagon_reg',
   'ggml_backend_is_hexagon',
 ];
+const REQUIRED_VULKAN_SYMBOLS = ['ggml_backend_vk_reg', 'ggml_backend_is_vk'];
 
 const CORE_PATCH_MARKER = 'rnllama_patch_abort_v3';
 const JSI_PATCH_MARKER = 'rnllama_jsi_patch_ownership_v3';
@@ -137,6 +138,19 @@ function hexagonDynsym({withRequired = true} = {}) {
   return buildElf(symbols);
 }
 
+function vulkanDynsym({withRequired = true} = {}) {
+  const symbols = [];
+  if (withRequired) {
+    for (const name of REQUIRED_VULKAN_SYMBOLS) {
+      symbols.push({name, defined: true});
+    }
+  }
+  symbols.push({name: CORE_PATCH_MARKER, defined: true});
+  symbols.push({name: 'lm_ggml_backend_reg_count', defined: true});
+  symbols.push({name: 'malloc', defined: false});
+  return buildElf(symbols);
+}
+
 /**
  * A DSP library as far as the check is concerned: ELF32, little-endian, and
  * targeting EM_QDSP6. The real ones are 650-730 KB of Hexagon code; only the
@@ -166,6 +180,8 @@ function conformingEntries(prefix = '') {
       entries[`${prefix}lib/${abi.abi}/${lib}`] =
         /_hexagon/.test(lib) && !isJniWrapper(lib)
           ? hexagonDynsym()
+          : lib === 'librnllama_vulkan.so'
+            ? vulkanDynsym()
           : patchedElf(lib);
     }
     for (const asset of abi.requiredAssets) {
@@ -232,7 +248,7 @@ describe('the variant allowlist', () => {
     const {status, output} = runGate(['--print-variants']);
     expect(status).toBe(0);
     expect(output.trim()).toBe(
-      'rnllama,rnllama_v8,rnllama_v8_2,rnllama_v8_2_dotprod,rnllama_v8_2_dotprod_i8mm,rnllama_v8_2_dotprod_i8mm_hexagon_opencl,rnllama_x86_64',
+      'rnllama,rnllama_v8,rnllama_v8_2,rnllama_v8_2_dotprod,rnllama_v8_2_dotprod_i8mm,rnllama_v8_2_dotprod_i8mm_hexagon_opencl,rnllama_vulkan,rnllama_x86_64',
     );
   });
 
@@ -288,6 +304,17 @@ describe('a conforming artifact', () => {
 });
 
 describe('the Hexagon backend', () => {
+  it('requires registered Vulkan backend symbols', () => {
+    const entries = conformingEntries();
+    entries['lib/arm64-v8a/librnllama_vulkan.so'] = vulkanDynsym({
+      withRequired: false,
+    });
+    const {status, output} = gateApk(entries);
+    expect(status).toBe(1);
+    expect(output).toContain('ggml_backend_vk_reg');
+    expect(output).toContain('ggml_backend_is_vk');
+  });
+
   it('fails when the required symbols are absent, naming both', () => {
     const entries = conformingEntries();
     entries['lib/arm64-v8a/librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so'] =

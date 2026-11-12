@@ -2411,26 +2411,57 @@ class ModelStore {
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
-    const effectiveSettings = await this.getEffectiveContextInitParams(
+    let effectiveSettings = await this.getEffectiveContextInitParams(
       filePath,
       draftConfig,
     );
 
     try {
       // Create properly versioned ContextInitParams
-      const contextInitParams = createContextInitParams(effectiveSettings);
+      let contextInitParams = createContextInitParams(effectiveSettings);
 
       const t0 = Date.now();
-      const ctx = await initLlama(
-        {
-          model: filePath,
-          ...effectiveSettings, // Use effectiveSettings without version for llama.rn
-          use_progress_callback: true,
-        },
-        (_progress: number) => {
-          //console.log('progress: ', _progress);
-        },
-      );
+      const autoAcceleratorRequested =
+        Platform.OS === 'android' &&
+        !this.contextInitParams.devices?.length &&
+        (this.contextInitParams.n_gpu_layers ?? 0) > 0;
+      let ctx: Awaited<ReturnType<typeof initLlama>>;
+      try {
+        ctx = await initLlama(
+          {
+            model: filePath,
+            ...effectiveSettings,
+            use_progress_callback: true,
+          },
+          (_progress: number) => {
+            // Progress is handled by the existing model-loading state.
+          },
+        );
+      } catch (error) {
+        if (!autoAcceleratorRequested) {
+          throw error;
+        }
+        console.warn(
+          '[ModelStore] Automatic GPU initialization failed; retrying with CPU',
+          error,
+        );
+        effectiveSettings = {
+          ...effectiveSettings,
+          devices: ['CPU'],
+          n_gpu_layers: 0,
+        };
+        contextInitParams = createContextInitParams(effectiveSettings);
+        ctx = await initLlama(
+          {
+            model: filePath,
+            ...effectiveSettings,
+            use_progress_callback: true,
+          },
+          (_progress: number) => {
+            // Progress is handled by the existing model-loading state.
+          },
+        );
+      }
       const t1 = Date.now();
       console.log('init time: ', t1 - t0);
 
@@ -3264,6 +3295,25 @@ class ModelStore {
 
   private async initializeGpuSettings() {
     const gpuCapabilities = await checkGpuSupport();
+
+    // Older Android builds persisted the default CPU-only fallback when the
+    // device was not recognized as Adreno. Re-enable automatic placement for
+    // those records once a real Vulkan/OpenCL backend is available.
+    if (
+      Platform.OS === 'android' &&
+      gpuCapabilities.isSupported &&
+      this.contextInitParams.devices == null &&
+      this.contextInitParams.no_gpu_devices === true
+    ) {
+      runInAction(() => {
+        this.contextInitParams = {
+          ...this.contextInitParams,
+          no_gpu_devices: false,
+          n_gpu_layers: 99,
+        };
+      });
+      return;
+    }
 
     // If GPU is not supported but currently enabled, disable it
     if (

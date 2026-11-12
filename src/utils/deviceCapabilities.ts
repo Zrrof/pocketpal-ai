@@ -1,6 +1,7 @@
 import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
+import {getBackendDevicesInfo} from 'llama.rn';
 import type {CPUInfo, GPUInfo} from '../specs/NativeHardwareInfo';
 
 /**
@@ -14,6 +15,7 @@ export interface GpuCapabilities {
     | 'ios_version'
     | 'no_adreno'
     | 'missing_cpu_features'
+    | 'no_gpu_backend'
     | 'simulator'
     | 'unknown';
   /** Detailed information about missing requirements */
@@ -50,7 +52,7 @@ export interface CpuInfo {
  *
  * Requirements:
  * - iOS: Requires iOS 18 or higher for Metal acceleration
- * - Android: Requires Adreno GPU + i8mm CPU feature + dotprod CPU feature for OpenCL
+ * - Android: Requires a GPU device registered by the compiled llama.cpp backends
  *
  * @returns Promise<GpuCapabilities> GPU support status and details
  */
@@ -80,39 +82,15 @@ export async function checkGpuSupport(): Promise<GpuCapabilities> {
       },
     };
   } else if (Platform.OS === 'android') {
-    // Android requires Adreno GPU + i8mm + dotprod CPU features for OpenCL
+    // Query registered backends so Vulkan works on Mali/Xclipse as well as
+    // the existing Adreno/OpenCL path. Device hints alone do not prove support.
     try {
-      const [gpuInfo, cpuInfo] = await Promise.all([
-        NativeHardwareInfo.getGPUInfo(),
-        NativeHardwareInfo.getCPUInfo(),
-      ]);
-
-      const hasAdreno = gpuInfo.hasAdreno ?? false;
-      const hasI8mm = cpuInfo.hasI8mm ?? false;
-      const hasDotProd = cpuInfo.hasDotProd ?? false;
-
-      // All three conditions must be met for OpenCL support
-      const isSupported = hasAdreno && hasI8mm && hasDotProd;
-
-      let reason: GpuCapabilities['reason'];
-      if (!isSupported) {
-        if (!hasAdreno) {
-          reason = 'no_adreno';
-        } else if (!hasI8mm || !hasDotProd) {
-          reason = 'missing_cpu_features';
-        } else {
-          reason = 'unknown';
-        }
-      }
+      const devices = await getBackendDevicesInfo();
+      const isSupported = (devices ?? []).some(device => device.type === 'gpu');
 
       return {
         isSupported,
-        reason,
-        details: {
-          hasAdreno,
-          hasI8mm,
-          hasDotProd,
-        },
+        reason: isSupported ? undefined : 'no_gpu_backend',
       };
     } catch (error) {
       console.warn('Failed to check GPU support:', error);

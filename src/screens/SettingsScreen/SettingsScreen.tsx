@@ -317,8 +317,10 @@ export const SettingsScreen: React.FC = observer(() => {
     }
 
     // Android
-    // No auto mode on Android - always explicit device selection
-    if (!devices || devices.length === 0 || devices[0] === 'CPU') {
+    if (!devices || devices.length === 0) {
+      return nGpuLayers > 0 ? 'auto' : 'cpu';
+    }
+    if (devices[0] === 'CPU') {
       return 'cpu';
     }
 
@@ -332,6 +334,7 @@ export const SettingsScreen: React.FC = observer(() => {
 
   const handleDeviceSelect = (option: DeviceOption) => {
     modelStore.setDevices(option.devices);
+    modelStore.setNoGpuDevices(option.id === 'cpu');
 
     // Only update flash attention if current value is not valid for the selected device
     const currentFlashAttn =

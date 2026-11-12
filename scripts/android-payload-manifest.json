@@ -23,7 +23,9 @@
         "librnllama_v8_2_dotprod_i8mm.so",
         "librnllama_jni_v8_2_dotprod_i8mm.so",
         "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
-        "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so"
+        "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+        "librnllama_vulkan.so",
+        "librnllama_jni_vulkan.so"
       ],
       "requiredAssets": [
         "assets/ggml-hexagon/libggml-htp-v73.so",
@@ -33,6 +35,14 @@
         "assets/ggml-hexagon/libggml-htp-v85.so"
       ],
       "requiredSymbols": [
+        {
+          "lib": "librnllama_vulkan.so",
+          "kind": "backend",
+          "mustExport": [
+            "ggml_backend_vk_reg",
+            "ggml_backend_is_vk"
+          ]
+        },
         {
           "lib": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
           "kind": "backend",
