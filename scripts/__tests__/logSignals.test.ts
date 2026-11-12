@@ -85,6 +85,7 @@ describe('deriveLogSignals', () => {
       large_buffer_unsupported: false,
       hexagon_init: false,
       hexagon_device_name: null,
+      vulkan_init: false,
       offloaded_layers: null,
       total_layers: null,
       memory_buffers: {

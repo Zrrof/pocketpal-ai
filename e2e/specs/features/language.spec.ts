@@ -37,6 +37,10 @@ const LANGUAGE_ASSERTIONS: Record<
     screenTitle: 'الإعدادات',
     firstCardTitle: 'إعدادات تهيئة النموذج',
   },
+  de: {
+    screenTitle: 'Einstellungen',
+    firstCardTitle: 'Einstellungen Modellinitialisierung',
+  },
   es: {
     screenTitle: 'Ajustes',
     firstCardTitle: 'Ajustes de inicialización del modelo',
@@ -98,7 +102,7 @@ const LANGUAGE_ASSERTIONS: Record<
 };
 
 // Order: start with non-English, end with English to restore default state
-const LANGUAGE_ORDER = ['ar', 'es', 'fa', 'he', 'id', 'ja', 'ko', 'ms', 'pl', 'pt', 'pt_BR', 'ru', 'uk', 'zh', 'zh_Hant', 'en'];
+const LANGUAGE_ORDER = ['ar', 'de', 'es', 'fa', 'he', 'id', 'ja', 'ko', 'ms', 'pl', 'pt', 'pt_BR', 'ru', 'uk', 'zh', 'zh_Hant', 'en'];
 
 describe('Language Switching', () => {
   let chatPage: ChatPage;

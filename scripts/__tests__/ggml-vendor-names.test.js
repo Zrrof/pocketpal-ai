@@ -91,7 +91,7 @@ const whisperSetenvNames = setenvNames.filter(name =>
 
 const hexagonMustExport = MANIFEST.abis.flatMap(abi =>
   abi.requiredSymbols
-    .filter(rule => rule.kind === 'backend')
+    .filter(rule => rule.kind === 'backend' && rule.lib.includes('hexagon'))
     .flatMap(rule => rule.mustExport),
 );
 

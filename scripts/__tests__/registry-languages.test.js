@@ -17,6 +17,7 @@ describe('extractRegistryLanguages', () => {
     const source = fs.readFileSync(INDEX_PATH, 'utf-8');
     expect(extractRegistryLanguages(source)).toEqual([
       'ar',
+      'de',
       'es',
       'fa',
       'he',

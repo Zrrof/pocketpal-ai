@@ -50,6 +50,13 @@ export async function resolveDeviceSelection(selection: {
   n_gpu_layers?: number;
 }): Promise<{devices?: string[]; n_gpu_layers?: number}> {
   const snapshot = {...selection, devices: selection.devices?.slice()};
+  if (
+    Platform.OS === 'android' &&
+    (snapshot.n_gpu_layers ?? 0) === 0 &&
+    (!snapshot.devices?.length || snapshot.devices[0] === 'CPU')
+  ) {
+    return {devices: ['CPU'], n_gpu_layers: 0};
+  }
   // Android Auto resolves to a backend that this native library actually
   // registered. Prefer Vulkan (including Mali/Xclipse), then OpenCL, then HTP.
   if (

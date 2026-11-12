@@ -276,6 +276,7 @@ describe('ModelStore', () => {
       'loads Android CPU selection $devices without accelerator offloading',
       async ({devices}) => {
         modelStore.setDevices(devices);
+        modelStore.setNGPULayers(0);
         const saved = {...modelStore.contextInitParams};
         await modelStore.initContext(basicModel);
         expect(nativeInit).toHaveBeenCalledTimes(1);
