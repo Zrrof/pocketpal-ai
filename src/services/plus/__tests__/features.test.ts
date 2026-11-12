@@ -11,16 +11,14 @@ const NONE: ReadonlySet<string> = new Set();
 const GB8 = 8e9;
 
 describe('Plus feature status', () => {
-  it('shows hands-free voice and the API server ready', () => {
+  it('shows only Plus features, excluding the free API server', () => {
     const rows = featureRows(PLUS_FEATURES, GB8, NONE);
     expect(rows).toEqual([
       {id: 'handsFreeVoice', status: 'ready'},
-      {id: 'localApiServer', status: 'ready'},
     ]);
     expect(anyRunnable(rows)).toBe(true);
     expect(shippedFeatures(PLUS_FEATURES, NONE).map(f => f.id)).toEqual([
       'handsFreeVoice',
-      'localApiServer',
     ]);
   });
 
@@ -45,7 +43,6 @@ describe('Plus feature status', () => {
     );
     expect(rows).toEqual([
       {id: 'handsFreeVoice', status: 'optIn', reason: 'belowGate'},
-      {id: 'localApiServer', status: 'ready'},
     ]);
     expect(anyRunnable(rows)).toBe(true);
   });

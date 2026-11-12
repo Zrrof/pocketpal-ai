@@ -167,7 +167,7 @@ describe('Plus gate', () => {
       seen.push(isPlusAvailable());
     });
 
-    setShipOverride(['localApiServer']);
+    setShipOverride(['handsFreeVoice']);
     setShipOverride([]);
     stop();
 

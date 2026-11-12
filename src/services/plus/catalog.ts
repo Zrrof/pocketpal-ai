@@ -20,5 +20,4 @@ export interface PlusFeature {
 
 export const PLUS_FEATURES: readonly PlusFeature[] = [
   {id: 'handsFreeVoice', shipped: true},
-  {id: 'localApiServer', shipped: true},
 ];

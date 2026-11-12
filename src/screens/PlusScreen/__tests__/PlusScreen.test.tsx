@@ -146,9 +146,7 @@ describe('PlusScreen', () => {
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
         'Hands-free voiceReady',
       );
-      expect(getByTestId('plus-feature-localApiServer')).toHaveTextContent(
-        'Local API serverReady',
-      );
+      expect(queryByTestId('plus-feature-localApiServer')).toBeNull();
       expect(getByText('Speed depends on your phone and model.')).toBeTruthy();
       expect(getByTestId('plus-free-line')).toHaveTextContent(
         'Plus is optional. Chatting stays free.',

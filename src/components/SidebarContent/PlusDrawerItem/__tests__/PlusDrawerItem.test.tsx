@@ -71,7 +71,7 @@ describe('PlusDrawerItem', () => {
     const {queryByTestId} = renderItem();
     expect(queryByTestId('drawer-item-plus')).toBeNull();
 
-    act(() => setShipOverride(['localApiServer']));
+    act(() => setShipOverride(['handsFreeVoice']));
 
     expect(queryByTestId('drawer-item-plus')).not.toBeNull();
   });
@@ -81,18 +81,18 @@ describe('PlusDrawerItem', () => {
     [
       [
         {id: 'handsFreeVoice', shipped: true},
-        {id: 'localApiServer', shipped: true},
+        {id: 'third', shipped: true},
       ],
-      'Hands-free voice, Local API server',
+      'Hands-free voice, Third feature',
     ],
     [
       [
         {id: 'handsFreeVoice', shipped: true},
         {id: 'later', shipped: false},
-        {id: 'localApiServer', shipped: true},
         {id: 'third', shipped: true},
+        {id: 'open', shipped: true},
       ],
-      'Hands-free voice, Local API server & more',
+      'Hands-free voice, Third feature & more',
     ],
   ])('names up to two shipped features: %#', (features, expected) => {
     mockFeatures = fakePlusFeatures(features);
@@ -106,7 +106,7 @@ describe('PlusDrawerItem', () => {
   it('builds the subtitle from the translated template', () => {
     mockFeatures = fakePlusFeatures([
       {id: 'handsFreeVoice', shipped: true},
-      {id: 'localApiServer', shipped: true},
+      {id: 'third', shipped: true},
     ]);
     const l10n = {
       ...fakePlusL10n,
@@ -125,7 +125,7 @@ describe('PlusDrawerItem', () => {
     );
 
     expect(getByTestId('drawer-item-plus-subtitle')).toHaveTextContent(
-      'Hands-free voice / Local API server',
+      'Hands-free voice / Third feature',
     );
   });
 
