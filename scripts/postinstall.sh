@@ -14,6 +14,31 @@ else
     echo "OpenCL headers already present."
 fi
 
+# The Android NDK ships Vulkan's C headers but not Khronos Vulkan-Hpp. The
+# llama.cpp Vulkan backend includes <vulkan/vulkan.hpp>, so restore the Khronos
+# headers for Android source builds.
+VULKAN_HEADERS_VERSION="v1.4.368"
+VULKAN_HEADERS_DIR="node_modules/llama.rn/third_party/Vulkan-Headers"
+if [ ! -f "$VULKAN_HEADERS_DIR/include/vulkan/vulkan.hpp" ]; then
+    echo "Restoring Vulkan-Headers for llama.rn build from source..."
+    TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+    git -C "$TEMP_DIR" init --quiet
+    git -C "$TEMP_DIR" remote add origin https://github.com/KhronosGroup/Vulkan-Headers.git
+    git -C "$TEMP_DIR" sparse-checkout init --cone
+    git -C "$TEMP_DIR" sparse-checkout set include
+    git -C "$TEMP_DIR" fetch --quiet --depth 1 --filter=blob:none origin "$VULKAN_HEADERS_VERSION"
+    git -C "$TEMP_DIR" checkout --quiet FETCH_HEAD
+    mkdir -p "$VULKAN_HEADERS_DIR"
+    cp -R "$TEMP_DIR/include" "$VULKAN_HEADERS_DIR/"
+    test -f "$VULKAN_HEADERS_DIR/include/vulkan/vulkan.hpp"
+    rm -rf "$TEMP_DIR"
+    trap - EXIT
+    echo "Vulkan-Headers restored."
+else
+    echo "Vulkan-Headers already present."
+fi
+
 # llama.rn's npm package explicitly excludes ggml-vulkan even though its Android
 # source-build patch enables that backend. Restore the exact llama.cpp tree that
 # this llama.rn release vendors so the CMake source and headers stay in sync.
