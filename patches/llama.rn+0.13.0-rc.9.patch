@@ -1134,7 +1134,7 @@ index 0e8ace5..9b117a3 100644
      if (NOT ${arch} STREQUAL "generic")
          set(SOURCE_FILES_ARCH
              ${RNLLAMA_GGML_CPU_ARCH_DIR}/${arch}/quants.c
-@@ -211,6 +216,44 @@ function(build_rnllama_library target_name arch cpu_flags)
+@@ -211,6 +216,45 @@ function(build_rnllama_library target_name arch cpu_flags)
          )
      endif ()
  
@@ -1163,10 +1163,11 @@ index 0e8ace5..9b117a3 100644
 +        set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 +        add_subdirectory(${RNLLAMA_LLAMA_CPP_DIR}/ggml/src/ggml-vulkan
 +            ${CMAKE_CURRENT_BINARY_DIR}/ggml-vulkan)
-+        # Android's NDK does not ship Vulkan-Hpp; postinstall restores the
-+        # Khronos headers alongside llama.rn's other third-party dependencies.
++        # The NDK lacks Vulkan-Hpp and host SPIRV-Headers are outside the
++        # cross-compiler's search path, so postinstall provides both locally.
 +        target_include_directories(ggml-vulkan SYSTEM PRIVATE
-+            ${RNLLAMA_LLAMA_CPP_DIR}/../../third_party/Vulkan-Headers/include)
++            ${RNLLAMA_LLAMA_CPP_DIR}/../../third_party/Vulkan-Headers/include
++            ${RNLLAMA_LLAMA_CPP_DIR}/../../third_party/SPIRV-Headers/include)
 +        find_library(VULKAN_LIB vulkan)
 +        if (NOT VULKAN_LIB)
 +            message(FATAL_ERROR "Android Vulkan loader library was not found")
@@ -1179,7 +1180,7 @@ index 0e8ace5..9b117a3 100644
      # Optimize for size and performance
      target_compile_options(${target_name} PRIVATE -O3 -DNDEBUG)
      target_compile_options(${target_name} PRIVATE -ffunction-sections -fdata-sections)
-@@ -228,6 +271,7 @@ build_rnllama_library("rnllama" "generic" "")
+@@ -228,6 +272,7 @@ build_rnllama_library("rnllama" "generic" "")
  
  if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
      # ARM64 targets

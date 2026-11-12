@@ -39,6 +39,31 @@ else
     echo "Vulkan-Headers already present."
 fi
 
+# SPIRV-Headers are installed on the CI host, but their host include directory
+# is not searched by the Android cross-compiler. Keep a local header copy for
+# the Vulkan target to consume.
+SPIRV_HEADERS_VERSION="v1.202610.0"
+SPIRV_HEADERS_DIR="node_modules/llama.rn/third_party/SPIRV-Headers"
+if [ ! -f "$SPIRV_HEADERS_DIR/include/spirv/unified1/spirv.hpp" ]; then
+    echo "Restoring SPIRV-Headers for llama.rn build from source..."
+    TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+    git -C "$TEMP_DIR" init --quiet
+    git -C "$TEMP_DIR" remote add origin https://github.com/KhronosGroup/SPIRV-Headers.git
+    git -C "$TEMP_DIR" sparse-checkout init --cone
+    git -C "$TEMP_DIR" sparse-checkout set include
+    git -C "$TEMP_DIR" fetch --quiet --depth 1 --filter=blob:none origin "$SPIRV_HEADERS_VERSION"
+    git -C "$TEMP_DIR" checkout --quiet FETCH_HEAD
+    mkdir -p "$SPIRV_HEADERS_DIR"
+    cp -R "$TEMP_DIR/include" "$SPIRV_HEADERS_DIR/"
+    test -f "$SPIRV_HEADERS_DIR/include/spirv/unified1/spirv.hpp"
+    rm -rf "$TEMP_DIR"
+    trap - EXIT
+    echo "SPIRV-Headers restored."
+else
+    echo "SPIRV-Headers already present."
+fi
+
 # llama.rn's npm package explicitly excludes ggml-vulkan even though its Android
 # source-build patch enables that backend. Restore the exact llama.cpp tree that
 # this llama.rn release vendors so the CMake source and headers stay in sync.
