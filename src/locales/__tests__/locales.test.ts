@@ -46,6 +46,7 @@ const EXPECTED_SECTIONS = [
 const ALL_LANGUAGES: AvailableLanguage[] = [
   'en',
   'ar',
+  'de',
   'es',
   'fa',
   'he',
@@ -203,6 +204,7 @@ describe('exports', () => {
     expect(languageDisplayNames.ar).toBe(
       '\u0627\u0644\u0639\u0631\u0628\u064A\u0629 (AR)',
     );
+    expect(languageDisplayNames.de).toBe('Deutsch (DE)');
     expect(languageDisplayNames.es).toBe('Español (ES)');
     expect(languageDisplayNames.fa).toBe('\u0641\u0627\u0631\u0633\u06CC (FA)');
     expect(languageDisplayNames.he).toBe('\u05E2\u05D1\u05E8\u05D9\u05EA (HE)');
