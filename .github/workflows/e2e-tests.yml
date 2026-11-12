@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Install Vulkan shader build dependencies
+        run: sudo apt-get update && sudo apt-get install -y glslc spirv-headers libvulkan-dev
+
       - name: Restore enriched-markdown native assets
         # A cached node_modules can hold a failed download. Run directly, the script
         # reads the app's "enriched-markdown" config only through INIT_CWD.
