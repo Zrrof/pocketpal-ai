@@ -44,6 +44,14 @@
           ]
         },
         {
+          "lib": "librnllama_jni_vulkan.so",
+          "kind": "patch-marker",
+          "mustExport": [
+            "rnllama_jsi_patch_ownership_v3"
+          ],
+          "why": "The llama.rn patch in patches/ is not in this library: patch-package must apply it at install and llama.rn must be built from source (ORG_GRADLE_PROJECT_rnllamaBuildFromSource=true)."
+        },
+        {
           "lib": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
           "kind": "backend",
           "mustExport": [

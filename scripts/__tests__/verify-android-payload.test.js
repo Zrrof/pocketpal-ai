@@ -102,6 +102,10 @@ const CORE_PATCH_MARKER = 'rnllama_patch_abort_v3';
 const JSI_PATCH_MARKER = 'rnllama_jsi_patch_ownership_v3';
 
 const isJniWrapper = lib => lib.startsWith('librnllama_jni');
+const corePatchMarkerLibs = abi =>
+  abi.requiredSymbols
+    .filter(rule => rule.kind === 'patch-marker' && !isJniWrapper(rule.lib))
+    .map(rule => rule.lib);
 
 /** A library as the patched from-source build emits it: its marker defined. */
 function patchedElf(lib) {
@@ -145,7 +149,6 @@ function vulkanDynsym({withRequired = true} = {}) {
       symbols.push({name, defined: true});
     }
   }
-  symbols.push({name: CORE_PATCH_MARKER, defined: true});
   symbols.push({name: 'lm_ggml_backend_reg_count', defined: true});
   symbols.push({name: 'malloc', defined: false});
   return buildElf(symbols);
@@ -425,17 +428,24 @@ describe('the Hexagon backend', () => {
 });
 
 describe('the llama.rn patch markers', () => {
-  const coreLibs = abi => abi.requiredLibs.filter(lib => !isJniWrapper(lib));
-
-  it('are demanded of every required library, core and wrapper alike', () => {
+  it('requires patch markers for patched libraries and backend symbols for backends', () => {
     for (const abi of manifest.abis) {
       for (const lib of abi.requiredLibs) {
-        const demanded = abi.requiredSymbols
-          .filter(rule => rule.lib === lib)
-          .flatMap(rule => rule.mustExport);
-        expect(demanded).toContain(
-          isJniWrapper(lib) ? JSI_PATCH_MARKER : CORE_PATCH_MARKER,
-        );
+        const rules = abi.requiredSymbols.filter(rule => rule.lib === lib);
+        expect(rules.length).toBeGreaterThan(0);
+      }
+      for (const rule of abi.requiredSymbols) {
+        if (rule.kind === 'patch-marker') {
+          expect(rule.mustExport).toContain(
+            isJniWrapper(rule.lib) ? JSI_PATCH_MARKER : CORE_PATCH_MARKER,
+          );
+        } else {
+          expect(rule.mustExport).toEqual(
+            rule.lib.includes('hexagon')
+              ? REQUIRED_HEXAGON_SYMBOLS
+              : REQUIRED_VULKAN_SYMBOLS,
+          );
+        }
       }
     }
   });
@@ -468,7 +478,7 @@ describe('the llama.rn patch markers', () => {
   it('fails a prebuilt-shaped artifact that carries only the JSI marker', () => {
     const entries = conformingEntries();
     for (const abi of manifest.abis) {
-      for (const lib of coreLibs(abi)) {
+      for (const lib of corePatchMarkerLibs(abi)) {
         entries[`lib/${abi.abi}/${lib}`] = /_hexagon/.test(lib)
           ? buildElf(
               REQUIRED_HEXAGON_SYMBOLS.map(name => ({name, defined: true})),
@@ -479,7 +489,7 @@ describe('the llama.rn patch markers', () => {
     const {status, output} = gateApk(entries);
     expect(status).toBe(1);
     for (const abi of manifest.abis) {
-      for (const lib of coreLibs(abi)) {
+      for (const lib of corePatchMarkerLibs(abi)) {
         expect(output).toContain(
           `lib/${abi.abi}/${lib} in app-prod-release.apk does not export ${CORE_PATCH_MARKER}`,
         );
