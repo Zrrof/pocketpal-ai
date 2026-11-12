@@ -13,9 +13,7 @@ const GB8 = 8e9;
 describe('Plus feature status', () => {
   it('shows only Plus features, excluding the free API server', () => {
     const rows = featureRows(PLUS_FEATURES, GB8, NONE);
-    expect(rows).toEqual([
-      {id: 'handsFreeVoice', status: 'ready'},
-    ]);
+    expect(rows).toEqual([{id: 'handsFreeVoice', status: 'ready'}]);
     expect(anyRunnable(rows)).toBe(true);
     expect(shippedFeatures(PLUS_FEATURES, NONE).map(f => f.id)).toEqual([
       'handsFreeVoice',

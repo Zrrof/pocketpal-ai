@@ -59,7 +59,9 @@ export async function resolveDeviceSelection(selection: {
   ) {
     const available = await getAvailableDevices();
     const selected =
-      available.find(d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? '')) ??
+      available.find(
+        d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? ''),
+      ) ??
       available.find(d => d.type === 'gpu') ??
       selectHexagonDevice(available);
     return selected?.deviceName

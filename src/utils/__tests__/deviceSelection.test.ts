@@ -52,7 +52,10 @@ describe('Hexagon device selection', () => {
     'keeps CPU available when discovery returns %j',
     async devices => {
       discover.mockResolvedValue(devices);
-      expect((await getDeviceOptions()).map(o => o.id)).toEqual(['auto', 'cpu']);
+      expect((await getDeviceOptions()).map(o => o.id)).toEqual([
+        'auto',
+        'cpu',
+      ]);
       expect(
         await resolveDeviceSelection({devices: ['HTP*'], n_gpu_layers: 99}),
       ).toEqual({devices: ['CPU'], n_gpu_layers: 0});

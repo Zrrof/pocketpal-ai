@@ -271,7 +271,6 @@ export const LocalApiServerCard: React.FC = observer(() => {
           </View>
         </Sheet.Actions>
       </Sheet>
-
     </>
   );
 });

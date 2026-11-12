@@ -182,7 +182,7 @@ function conformingEntries(prefix = '') {
           ? hexagonDynsym()
           : lib === 'librnllama_vulkan.so'
             ? vulkanDynsym()
-          : patchedElf(lib);
+            : patchedElf(lib);
     }
     for (const asset of abi.requiredAssets) {
       entries[`${prefix}${asset}`] = buildDspStub();
