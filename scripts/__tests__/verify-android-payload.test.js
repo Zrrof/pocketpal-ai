@@ -142,6 +142,15 @@ function hexagonDynsym({withRequired = true} = {}) {
   return buildElf(symbols);
 }
 
+function mangledVulkanDynsym() {
+  return buildElf([
+    {name: '_Z19ggml_backend_vk_regv', defined: true},
+    {name: '_Z18ggml_backend_is_vkp13ggml_backend', defined: true},
+    {name: 'lm_ggml_backend_reg_count', defined: true},
+    {name: 'malloc', defined: false},
+  ]);
+}
+
 function vulkanDynsym({withRequired = true} = {}) {
   const symbols = [];
   if (withRequired) {
@@ -316,6 +325,14 @@ describe('the Hexagon backend', () => {
     expect(status).toBe(1);
     expect(output).toContain('ggml_backend_vk_reg');
     expect(output).toContain('ggml_backend_is_vk');
+  });
+
+  it('accepts C++-mangled Vulkan backend exports', () => {
+    const entries = conformingEntries();
+    entries['lib/arm64-v8a/librnllama_vulkan.so'] = mangledVulkanDynsym();
+    const {status, output} = gateApk(entries);
+    expect(status).toBe(0);
+    expect(output).toContain('PASS');
   });
 
   it('fails when the required symbols are absent, naming both', () => {

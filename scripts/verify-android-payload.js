@@ -433,6 +433,17 @@ function installedLlamaRnVersion() {
   }
 }
 
+function hasDefinedExport(symbols, symbolName, ruleKind) {
+  return symbols.some(
+    symbol =>
+      symbol.defined &&
+      (symbol.name === symbolName ||
+        (ruleKind === 'backend' &&
+          symbol.name.startsWith('_Z') &&
+          symbol.name.includes(symbolName))),
+  );
+}
+
 function checkSymbolRule({rule, archive, artifactName, entry, report, fail}) {
   let symbols;
   try {
@@ -454,7 +465,7 @@ function checkSymbolRule({rule, archive, artifactName, entry, report, fail}) {
   );
 
   const missing = rule.mustExport.filter(
-    name => !symbols.some(symbol => symbol.name === name && symbol.defined),
+    name => !hasDefinedExport(symbols, name, rule.kind),
   );
   for (const name of rule.mustExport) {
     report.push(
