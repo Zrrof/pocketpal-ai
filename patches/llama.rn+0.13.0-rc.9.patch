@@ -1098,18 +1098,15 @@ diff --git a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.jav
 index da47b6c..7a6244d 100644
 --- a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 +++ b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
-@@ -198,8 +198,18 @@ public class RNLlama {
+@@ -198,8 +198,15 @@ public class RNLlama {
        boolean jniLoaded = false;
        String loadedLib = "";
        if (isArm64V8a()) {
 +        // Vulkan capability is independent of the Qualcomm/OpenCL heuristics.
 +        // Let ggml enumerate the actual Vulkan device after this library loads.
-+        if (context.getPackageManager().hasSystemFeature(
-+            android.content.pm.PackageManager.FEATURE_VULKAN_HARDWARE_LEVEL)) {
-+          if (tryLoadLibrary("rnllama_jni_vulkan")) {
-+            jniLoaded = true;
-+            loadedLib = "rnllama_jni_vulkan";
-+          }
++        if (tryLoadLibrary("rnllama_jni_vulkan")) {
++          jniLoaded = true;
++          loadedLib = "rnllama_jni_vulkan";
 +        }
 +
          if (hasDotProd && hasI8mm && hasHexagon && hasAdreno) {
