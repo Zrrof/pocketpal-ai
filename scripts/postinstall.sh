@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Run patch-package first
 npx patch-package --error-on-fail || exit 1
@@ -42,7 +43,7 @@ fi
 # SPIRV-Headers are installed on the CI host, but their host include directory
 # is not searched by the Android cross-compiler. Keep a local header copy for
 # the Vulkan target to consume.
-SPIRV_HEADERS_VERSION="v1.202610.0"
+SPIRV_HEADERS_VERSION="v2026.08.0"
 SPIRV_HEADERS_DIR="node_modules/llama.rn/third_party/SPIRV-Headers"
 if [ ! -f "$SPIRV_HEADERS_DIR/include/spirv/unified1/spirv.hpp" ]; then
     echo "Restoring SPIRV-Headers for llama.rn build from source..."
