@@ -90,3 +90,16 @@ if [ ! -f "$VULKAN_SOURCE_DIR/CMakeLists.txt" ]; then
 else
     echo "ggml-vulkan sources already present."
 fi
+
+# Vulkan-Hpp's C API wrappers otherwise emit direct references to Vulkan 1.1
+# entry points, which are absent from Android API 24's libvulkan.so. Resolve
+# these calls through the dispatcher loaded from the active Vulkan instance.
+VULKAN_CPP_FILE="$VULKAN_SOURCE_DIR/ggml-vulkan.cpp"
+if grep -q '^[[:space:]]*vkGetPhysicalDeviceFeatures2(' "$VULKAN_CPP_FILE"; then
+    sed -i \
+        -e 's/\([[:space:]]\)vkGetPhysicalDeviceFeatures2(device->physical_device/\1VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(device->physical_device/' \
+        -e 's/\([[:space:]]\)vkGetPhysicalDeviceFeatures2(physical_device/\1VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(physical_device/' \
+        -e 's/\([[:space:]]\)vkGetPhysicalDeviceFeatures2(vkdev/\1VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(vkdev/' \
+        "$VULKAN_CPP_FILE"
+fi
+grep -q 'VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2' "$VULKAN_CPP_FILE"

@@ -1134,7 +1134,7 @@ index 0e8ace5..9b117a3 100644
      if (NOT ${arch} STREQUAL "generic")
          set(SOURCE_FILES_ARCH
              ${RNLLAMA_GGML_CPU_ARCH_DIR}/${arch}/quants.c
-@@ -211,6 +216,45 @@ function(build_rnllama_library target_name arch cpu_flags)
+@@ -211,6 +216,50 @@ function(build_rnllama_library target_name arch cpu_flags)
          )
      endif ()
  
@@ -1168,6 +1168,11 @@ index 0e8ace5..9b117a3 100644
 +        target_include_directories(ggml-vulkan SYSTEM PRIVATE
 +            ${RNLLAMA_LLAMA_CPP_DIR}/../../third_party/Vulkan-Headers/include
 +            ${RNLLAMA_LLAMA_CPP_DIR}/../../third_party/SPIRV-Headers/include)
++        # Android's API-24 Vulkan loader does not export Vulkan 1.1 entry
++        # points as link-time symbols. Vulkan-Hpp must resolve them through
++        # the instance dispatcher instead.
++        target_compile_definitions(ggml-vulkan PRIVATE
++            VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 +        find_library(VULKAN_LIB vulkan)
 +        if (NOT VULKAN_LIB)
 +            message(FATAL_ERROR "Android Vulkan loader library was not found")
