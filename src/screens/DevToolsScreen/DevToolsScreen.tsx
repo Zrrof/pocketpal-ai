@@ -10,6 +10,7 @@ import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
 import {TestCompletionScreen, DatabaseInspectorScreen} from './screens';
+import {exportAcceleratorDiagnostics} from '../../utils/acceleratorDiagnostics';
 
 // Define the stack navigator param list
 type DevToolsStackParamList = {
@@ -83,6 +84,33 @@ const DevToolsHomeScreen: React.FC = () => {
               These tools are for development and debugging purposes only. They
               will not be available in the release version of the app.
             </Text>
+          </Card.Content>
+        </Card>
+
+        {/* Test Completion Card */}
+        <Card elevation={1} style={styles.card}>
+          <Card.Title title="Accelerator Diagnostics" />
+          <Card.Content>
+            <Text variant="bodyMedium" style={styles.description}>
+              Collect device hardware details and registered llama.cpp GPU/NPU
+              backends, then share them as a text file. The report excludes
+              prompts, chat history, and account data.
+            </Text>
+            <View style={styles.buttonContainer}>
+              <Button
+                mode="contained"
+                onPress={() =>
+                  exportAcceleratorDiagnostics().catch(error => {
+                    Alert.alert(
+                      'Diagnostic export failed',
+                      (error as Error).message,
+                    );
+                  })
+                }
+                style={styles.button}>
+                Export Accelerator Diagnostics
+              </Button>
+            </View>
           </Card.Content>
         </Card>
 
