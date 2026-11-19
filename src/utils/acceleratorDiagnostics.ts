@@ -1,6 +1,6 @@
 import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
-import RNFS from '@dr.pogodin/react-native-fs';
+import * as RNFS from '@dr.pogodin/react-native-fs';
 import Share from 'react-native-share';
 import {modelStore} from '../store/ModelStore';
 import {
