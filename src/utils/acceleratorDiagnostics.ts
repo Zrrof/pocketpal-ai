@@ -82,8 +82,12 @@ export async function exportAcceleratorDiagnostics(): Promise<void> {
     });
   }
 
-  sections.push(`Native llama.cpp logs during diagnostic query:\n${nativeLogs.join('\n') || '(no native log lines emitted)'}`);
-  sections.push('Privacy: this report does not include prompts, chat history, model paths, or account data.');
+  sections.push(
+    `Native llama.cpp logs during diagnostic query:\n${nativeLogs.join('\n') || '(no native log lines emitted)'}`,
+  );
+  sections.push(
+    'Privacy: this report does not include prompts, chat history, model paths, or account data.',
+  );
 
   const filename = `pocketpal-accelerator-diagnostics-${new Date()
     .toISOString()
