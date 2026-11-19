@@ -127,7 +127,7 @@ export const SettingsScreen: React.FC = observer(() => {
   const [gpuSupported, setGpuSupported] = useState(false);
   const [deviceOptions, setDeviceOptions] = useState<DeviceOption[]>([]);
   const [currentBackend, setCurrentBackend] = useState<
-    'metal' | 'opencl' | 'hexagon' | 'cpu' | 'blas'
+    'metal' | 'vulkan' | 'opencl' | 'hexagon' | 'cpu' | 'blas'
   >(Platform.OS === 'ios' ? 'metal' : 'cpu');
   const debouncedUpdateStore = useRef(
     debounce((value: number) => {

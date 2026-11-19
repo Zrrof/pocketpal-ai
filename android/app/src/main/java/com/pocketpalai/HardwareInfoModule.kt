@@ -117,10 +117,12 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
       val rendererLower = renderer.lowercase()
       val hasAdreno = Pattern.compile("(adreno|qcom|qualcomm)").matcher(rendererLower).find()
       val hasMali = Pattern.compile("mali").matcher(rendererLower).find()
+      val hasXclipse = Pattern.compile("xclipse").matcher(rendererLower).find()
       val hasPowerVR = Pattern.compile("powervr").matcher(rendererLower).find()
 
       gpuInfo.putBoolean("hasAdreno", hasAdreno)
       gpuInfo.putBoolean("hasMali", hasMali)
+      gpuInfo.putBoolean("hasXclipse", hasXclipse)
       gpuInfo.putBoolean("hasPowerVR", hasPowerVR)
 
       // Note: OpenCL support requires Adreno GPU AND both i8mm and dotprod CPU features
@@ -131,6 +133,7 @@ class HardwareInfoModule(reactContext: ReactApplicationContext) :
       // Determine GPU type string
       val gpuType = when {
         hasAdreno -> "Adreno (Qualcomm)"
+        hasXclipse -> "Xclipse (Samsung)"
         hasMali -> "Mali (ARM)"
         hasPowerVR -> "PowerVR (Imagination)"
         renderer.isNotEmpty() -> renderer

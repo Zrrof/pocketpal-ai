@@ -151,7 +151,9 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
   // Android: Build options based on available devices
   const devices = await getAvailableDevices();
   const hexagonDevice = selectHexagonDevice(devices);
-  const gpuDev = devices.find(d => d.type === 'gpu');
+  const gpuDev =
+    devices.find(d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? '')) ??
+    devices.find(d => d.type === 'gpu');
 
   // Auto uses runtime backend discovery and safely resolves to CPU if none is
   // registered. Vulkan is preferred when both Vulkan and OpenCL are present.
@@ -181,7 +183,7 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
     platform: 'android',
   });
 
-  // Option 2: GPU/OpenCL (if available)
+  // Option 2: GPU backend (if available)
   if (gpuDev) {
     const isOpenCL = /opencl/i.test(gpuDev.backend ?? '');
     options.push({

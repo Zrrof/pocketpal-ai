@@ -8,7 +8,13 @@ import {CacheType} from './types';
 import {getAvailableDevices} from './deviceSelection';
 
 export type FlashAttnType = 'auto' | 'on' | 'off';
-export type BackendType = 'metal' | 'opencl' | 'hexagon' | 'cpu' | 'blas';
+export type BackendType =
+  | 'metal'
+  | 'vulkan'
+  | 'opencl'
+  | 'hexagon'
+  | 'cpu'
+  | 'blas';
 
 /**
  * Determines the backend type based ONLY on the devices array
@@ -37,10 +43,21 @@ export async function inferBackendType(
       return 'hexagon';
     }
 
-    // Any other device on Android is assumed to be GPU (OpenCL/Vulkan)
-    // (e.g., "Adreno 730", "Mali-G78", etc.)
+    // Resolve the selected device against llama.cpp's backend metadata. Device
+    // names alone cannot distinguish Vulkan from OpenCL.
     if (Platform.OS === 'android') {
-      return 'opencl';
+      const available = await getAvailableDevices();
+      const selected = available.find(
+        device => device.deviceName === primaryDevice,
+      );
+      const backend = selected?.backend?.toLowerCase() ?? '';
+      if (backend.includes('vulkan')) {
+        return 'vulkan';
+      }
+      if (backend.includes('opencl')) {
+        return 'opencl';
+      }
+      return selected?.type === 'gpu' ? 'vulkan' : 'cpu';
     }
 
     // Fallback to cpu for unknown devices (on iOS)
@@ -56,10 +73,15 @@ export async function inferBackendType(
   // Android: Check what's actually available
   // Auto mode will use GPU if available, otherwise CPU
   const availableDevices = await getAvailableDevices();
-  const hasGpu = availableDevices.some(d => d.type === 'gpu');
-
-  if (hasGpu) {
-    return 'opencl'; // Auto mode uses OpenCL when GPU is available
+  const gpu =
+    availableDevices.find(
+      d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? ''),
+    ) ?? availableDevices.find(d => d.type === 'gpu');
+  if (gpu) {
+    const backend = gpu.backend?.toLowerCase() ?? '';
+    if (backend.includes('vulkan')) return 'vulkan';
+    if (backend.includes('opencl')) return 'opencl';
+    return 'vulkan';
   }
 
   return 'cpu'; // Fallback to CPU when no GPU

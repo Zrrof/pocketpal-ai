@@ -881,6 +881,7 @@ export type DeviceInfo = {
     version: string;
     hasAdreno: boolean;
     hasMali: boolean;
+    hasXclipse: boolean;
     hasPowerVR: boolean;
     supportsOpenCL: boolean; // Note: On Android, this only checks for Adreno GPU. Full OpenCL support also requires i8mm and dotprod CPU features.
     gpuType: string;

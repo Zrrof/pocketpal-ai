@@ -70,6 +70,7 @@ export const DeviceInfoCard = ({onDeviceInfo, testId}: Props) => {
           version: string;
           hasAdreno: boolean;
           hasMali: boolean;
+          hasXclipse: boolean;
           hasPowerVR: boolean;
           supportsOpenCL: boolean;
           gpuType: string;

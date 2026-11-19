@@ -2,6 +2,7 @@ import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import RNFS from '@dr.pogodin/react-native-fs';
 import Share from 'react-native-share';
+import {modelStore} from '../store/ModelStore';
 import {
   addNativeLogListener,
   getBackendDevicesInfo,
@@ -37,6 +38,35 @@ export async function exportAcceleratorDiagnostics(): Promise<void> {
   await record('CPU info', getCpuInfo);
   await record('GPU info', getGpuInfo);
   await record('llama.rn registered backend devices', getBackendDevicesInfo);
+  sections.push(
+    `Configured accelerator settings:\n${JSON.stringify(
+      {
+        devices: modelStore.contextInitParams.devices,
+        gpuLayers: modelStore.contextInitParams.n_gpu_layers,
+        gpuDisabled: modelStore.contextInitParams.no_gpu_devices,
+      },
+      null,
+      2,
+    )}`,
+  );
+  const lastLoadError = modelStore.modelLoadError;
+  if (lastLoadError?.context === 'modelInit') {
+    const contextParams = lastLoadError.metadata?.contextParams;
+    sections.push(
+      `Last model initialization error:\n${JSON.stringify(
+        {
+          message: lastLoadError.message,
+          code: lastLoadError.code,
+          devices: contextParams?.devices,
+          gpuLayers: contextParams?.n_gpu_layers,
+        },
+        null,
+        2,
+      )}`,
+    );
+  } else {
+    sections.push('Last model initialization error:\n(none recorded)');
+  }
 
   const nativeLogs: string[] = [];
   const subscription = addNativeLogListener((level, text) => {
@@ -53,7 +83,7 @@ export async function exportAcceleratorDiagnostics(): Promise<void> {
   }
 
   sections.push(`Native llama.cpp logs during diagnostic query:\n${nativeLogs.join('\n') || '(no native log lines emitted)'}`);
-  sections.push('Configured model loading settings:\nSee PocketPal Settings > Model > Backend; this report intentionally does not include prompts, chat history, model paths, or account data.');
+  sections.push('Privacy: this report does not include prompts, chat history, model paths, or account data.');
 
   const filename = `pocketpal-accelerator-diagnostics-${new Date()
     .toISOString()
