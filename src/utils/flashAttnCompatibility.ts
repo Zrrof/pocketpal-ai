@@ -60,7 +60,9 @@ export async function inferBackendType(
       // Device metadata is not guaranteed to include every user-facing device
       // name. On Android, an explicit non-CPU/non-HTP device is a GPU/OpenCL
       // selection unless the metadata explicitly identifies Vulkan.
-      return selected && isGpuBackendDevice(selected) && backend.includes('vulkan')
+      return selected &&
+        isGpuBackendDevice(selected) &&
+        backend.includes('vulkan')
         ? 'vulkan'
         : 'opencl';
     }
