@@ -5,7 +5,7 @@
 
 import {Platform} from 'react-native';
 import {CacheType} from './types';
-import {getAvailableDevices} from './deviceSelection';
+import {getAvailableDevices, isGpuBackendDevice} from './deviceSelection';
 
 export type FlashAttnType = 'auto' | 'on' | 'off';
 export type BackendType =
@@ -60,7 +60,7 @@ export async function inferBackendType(
       // Device metadata is not guaranteed to include every user-facing device
       // name. On Android, an explicit non-CPU/non-HTP device is a GPU/OpenCL
       // selection unless the metadata explicitly identifies Vulkan.
-      return selected?.type === 'gpu' && backend.includes('vulkan')
+      return selected && isGpuBackendDevice(selected) && backend.includes('vulkan')
         ? 'vulkan'
         : 'opencl';
     }
@@ -80,8 +80,8 @@ export async function inferBackendType(
   const availableDevices = await getAvailableDevices();
   const gpu =
     availableDevices.find(
-      d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? ''),
-    ) ?? availableDevices.find(d => d.type === 'gpu');
+      d => isGpuBackendDevice(d) && /vulkan/i.test(d.backend ?? ''),
+    ) ?? availableDevices.find(isGpuBackendDevice);
   if (gpu) {
     const backend = gpu.backend?.toLowerCase() ?? '';
     if (backend.includes('vulkan')) return 'vulkan';

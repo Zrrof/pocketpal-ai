@@ -38,6 +38,14 @@ export async function getAvailableDevices(): Promise<
   }
 }
 
+/** ggml reports integrated Vulkan GPUs with the distinct `igpu` type. */
+export function isGpuBackendDevice(
+  device: Pick<NativeBackendDeviceInfo, 'type'>,
+): boolean {
+  const type = device.type.toLowerCase();
+  return type === 'gpu' || type === 'igpu';
+}
+
 function selectHexagonDevice(devices: NativeBackendDeviceInfo[]) {
   return devices.find(
     device =>
@@ -67,9 +75,9 @@ export async function resolveDeviceSelection(selection: {
     const available = await getAvailableDevices();
     const selected =
       available.find(
-        d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? ''),
+        d => isGpuBackendDevice(d) && /vulkan/i.test(d.backend ?? ''),
       ) ??
-      available.find(d => d.type === 'gpu') ??
+      available.find(isGpuBackendDevice) ??
       selectHexagonDevice(available);
     return selected?.deviceName
       ? {...snapshot, devices: [selected.deviceName]}
@@ -152,8 +160,9 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
   const devices = await getAvailableDevices();
   const hexagonDevice = selectHexagonDevice(devices);
   const gpuDev =
-    devices.find(d => d.type === 'gpu' && /vulkan/i.test(d.backend ?? '')) ??
-    devices.find(d => d.type === 'gpu');
+    devices.find(
+      d => isGpuBackendDevice(d) && /vulkan/i.test(d.backend ?? ''),
+    ) ?? devices.find(isGpuBackendDevice);
 
   // Auto uses runtime backend discovery and safely resolves to CPU if none is
   // registered. Vulkan is preferred when both Vulkan and OpenCL are present.
@@ -349,11 +358,11 @@ export async function isHexagonAvailable(): Promise<boolean> {
 }
 
 /**
- * Check if GPU (OpenCL) is available on this device
+ * Check if a GPU backend (Vulkan/OpenCL) is available on this device
  */
 export async function isGpuAvailable(): Promise<boolean> {
   const devices = await getAvailableDevices();
-  return devices.some(d => d.type === 'gpu');
+  return devices.some(isGpuBackendDevice);
 }
 
 /**

@@ -2,6 +2,7 @@ import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import {getBackendDevicesInfo} from 'llama.rn';
+import {isGpuBackendDevice} from './deviceSelection';
 import type {CPUInfo, GPUInfo} from '../specs/NativeHardwareInfo';
 
 /**
@@ -86,7 +87,7 @@ export async function checkGpuSupport(): Promise<GpuCapabilities> {
     // the existing Adreno/OpenCL path. Device hints alone do not prove support.
     try {
       const devices = await getBackendDevicesInfo();
-      const isSupported = (devices ?? []).some(device => device.type === 'gpu');
+      const isSupported = (devices ?? []).some(isGpuBackendDevice);
 
       return {
         isSupported,
