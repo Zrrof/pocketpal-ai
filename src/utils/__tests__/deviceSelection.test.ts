@@ -48,7 +48,7 @@ describe('Hexagon device selection', () => {
     },
   );
 
-  it.each([undefined, [], [device('HTP*')], [{deviceName: undefined}]])(
+  it.each([undefined, [], [device('HTP*')], [{}], [{deviceName: undefined}]])(
     'keeps CPU available when discovery returns %j',
     async devices => {
       discover.mockResolvedValue(devices);

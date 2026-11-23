@@ -42,6 +42,9 @@ export async function getAvailableDevices(): Promise<
 export function isGpuBackendDevice(
   device: Pick<NativeBackendDeviceInfo, 'type'>,
 ): boolean {
+  if (typeof device.type !== 'string') {
+    return false;
+  }
   const type = device.type.toLowerCase();
   return type === 'gpu' || type === 'igpu';
 }
